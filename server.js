@@ -3,7 +3,6 @@ import bodyParser from "body-parser";
 import { config } from "dotenv";
 import cors from "cors";
 import routes from "./src/routes/routes.js"
-import path from "path"
 config();
 
 const app = express();
@@ -12,7 +11,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.use('/src/database/uploads', express.static('src/database/uploads'))
-app.use("/api/v1", routes);
+app.use("/api", routes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "UP", timestamp: new Date() });

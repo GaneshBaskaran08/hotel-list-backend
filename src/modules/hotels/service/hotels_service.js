@@ -18,30 +18,51 @@ const deleteImageFile = (filePath) => {
 };
 
 export const getAllHotels = async (req, res) => {
-  const { title, minPrice, maxPrice } = req.query;
+  const { title, minPrice, maxPrice, limit, page } = req.query;
 
   let query = "SELECT * FROM hotels WHERE 1=1";
+  let countQuery = "SELECT COUNT(*) FROM hotels WHERE 1=1";
   let params = [];
+  let countParams = [];
 
   if (title) {
     query += ` AND LOWER(title) LIKE $${params.length + 1}`;
+    countQuery += ` AND LOWER(title) LIKE $${countParams.length + 1}`;
     params.push(`%${title.toLowerCase()}%`);
+    countParams.push(`%${title.toLowerCase()}%`);
   }
 
   if (minPrice && maxPrice) {
     query += ` AND price BETWEEN $${params.length + 1} AND $${
       params.length + 2
     }`;
+    countQuery += ` AND price BETWEEN $${countParams.length + 1} AND $${
+      countParams.length + 2
+    }`;
     params.push(minPrice, maxPrice);
+    countParams.push(minPrice, maxPrice);
   } else if (minPrice) {
     query += ` AND price >= $${params.length + 1}`;
+    countQuery += ` AND price >= $${countParams.length + 1}`;
     params.push(minPrice);
+    countParams.push(minPrice);
   } else if (maxPrice) {
     query += ` AND price <= $${params.length + 1}`;
+    countQuery += ` AND price <= $${countParams.length + 1}`;
     params.push(maxPrice);
+    countParams.push(maxPrice);
   }
 
+  const itemsPerPage = parseInt(limit) || 5;
+  const currentPage = parseInt(page) || 1;
+  const offset = (currentPage - 1) * itemsPerPage;
+
+  query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  params.push(itemsPerPage, offset);
+
   try {
+    const countResult = await pool.query(countQuery, countParams);
+    const totalItems = parseInt(countResult.rows[0].count);
     const data = await pool.query(query, params);
     const hotels = data.rows.map((hotel) => ({
       ...hotel,
@@ -49,7 +70,14 @@ export const getAllHotels = async (req, res) => {
         ? `${req.protocol}://${req.get("host")}${hotel.image}`
         : null,
     }));
-    return res.json(hotels);
+
+    return res.json({
+      hotels,
+      totalItems,
+      currentPage,
+      itemsPerPage,
+      totalPages: Math.ceil(totalItems / itemsPerPage),
+    });
   } catch (error) {
     return res.status(500).json({ message: "Error retrieving hotels", error });
   }
@@ -64,8 +92,16 @@ export const getHotelById = async (req, res) => {
     hotelId,
   ]);
   const hotel = data.rows[0];
+  const imageUrl = hotel.image
+    ? `${req.protocol}://${req.get("host")}${hotel.image}`
+    : null;
 
-  if (hotel) res.json(hotel);
+  const response = {
+    ...hotel,
+    image: imageUrl,
+  };
+
+  if (hotel) res.json(response);
   else res.status(404).json({ message: "Hotel not found" });
 };
 
