@@ -162,7 +162,15 @@ export const updateHotel = async (req, res) => {
       [newImage, title, description, latitude, longitude, price, hotelId]
     );
     const updatedHotel = result.rows[0];
-    return res.json(updatedHotel);
+    const imageUrl = updatedHotel.image
+    ? `${req.protocol}://${req.get("host")}${updatedHotel.image}`
+    : null;
+
+  const response = {
+    ...updatedHotel,
+    image: imageUrl,
+  };
+    return res.json(response);
   } catch (error) {
     return res.status(500).json({ message: "Error updating hotel", error });
   }
