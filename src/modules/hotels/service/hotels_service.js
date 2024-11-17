@@ -24,18 +24,20 @@ export const getAllHotels = async (req, res) => {
   let params = [];
 
   if (title) {
-    query += " AND title ILIKE $1";
-    params.push(`%${title}%`);
+    query += ` AND LOWER(title) LIKE $${params.length + 1}`;
+    params.push(`%${title.toLowerCase()}%`);
   }
 
   if (minPrice && maxPrice) {
-    query += " AND price BETWEEN $2 AND $3";
+    query += ` AND price BETWEEN $${params.length + 1} AND $${
+      params.length + 2
+    }`;
     params.push(minPrice, maxPrice);
   } else if (minPrice) {
-    query += " AND price >= $2";
+    query += ` AND price >= $${params.length + 1}`;
     params.push(minPrice);
   } else if (maxPrice) {
-    query += " AND price <= $2";
+    query += ` AND price <= $${params.length + 1}`;
     params.push(maxPrice);
   }
 
@@ -55,6 +57,9 @@ export const getAllHotels = async (req, res) => {
 
 export const getHotelById = async (req, res) => {
   const hotelId = req.params.id;
+  if (!hotelId) {
+    return res.status(400).json({ message: "Hotel ID is required" });
+  }
   const data = await pool.query("SELECT * FROM hotels WHERE id = $1", [
     hotelId,
   ]);
@@ -93,6 +98,10 @@ export const updateHotel = async (req, res) => {
   const { title, description, latitude, longitude, price } = req.body;
   const hotelId = req.params.id;
 
+  if (!hotelId) {
+    return res.status(400).json({ message: "Hotel ID is required" });
+  }
+
   const existingHotelData = await pool.query(
     "SELECT * FROM hotels WHERE id = $1",
     [hotelId]
@@ -126,6 +135,9 @@ export const updateHotel = async (req, res) => {
 export const deleteHotel = async (req, res) => {
   const hotelId = req.params.id;
 
+  if (!hotelId) {
+    return res.status(400).json({ message: "Hotel ID is required" });
+  }
   const existingHotelData = await pool.query(
     "SELECT * FROM hotels WHERE id = $1",
     [hotelId]
