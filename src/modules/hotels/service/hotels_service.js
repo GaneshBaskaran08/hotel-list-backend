@@ -115,15 +115,22 @@ export const createHotel = async (req, res) => {
   }
   const image = req.file ? `/src/database/uploads/${req.file.filename}` : null;
 
+  try {
   const data = await pool.query(
     "INSERT INTO hotels (image, title, description, latitude, longitude, price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
     [image, title, description, latitude, longitude, price]
   );
 
   const hotel = data.rows[0];
+  const imageUrl = hotel.image
+    ? `${req.protocol}://${req.get("host")}${hotel.image}`
+    : null;
 
-  try {
-    return res.status(201).json(hotel);
+  const response = {
+    ...hotel,
+    image: imageUrl,
+  };
+    return res.status(201).json(response);
   } catch (error) {
     deleteImageFile(image);
     return res.status(500).json({ message: "Error creating hotel", error });
